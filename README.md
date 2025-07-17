@@ -6,8 +6,8 @@
 <br/>
 A Model Context Protocol (MCP) server for Terrakube operations, enabling workspace management, variable handling, module operations, and organization management.
 
-<a href="https://glama.ai/mcp/servers/@AzBuilder/mcp-server-terrakube">
-  <img width="380" height="200" src="https://glama.ai/mcp/servers/@AzBuilder/mcp-server-terrakube/badge" alt="Terrakube Server MCP server" />
+<a href="https://glama.ai/mcp/servers/@terrakube-io/mcp-server-terrakube">
+  <img width="380" height="200" src="https://glama.ai/mcp/servers/@terrakube-io/mcp-server-terrakube/badge" alt="Terrakube Server MCP server" />
 </a>
 
 ## Features
