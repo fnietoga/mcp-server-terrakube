@@ -1,0 +1,86 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: {{ .Values.chartmetadata.name }}
+  labels:
+    app: {{ .Values.chartmetadata.labels.app }}
+    component: {{ .Values.chartmetadata.labels.component }}
+spec:
+  replicas: {{ .Values.replicaCount | default 1 }}
+  selector:
+    matchLabels:
+{{- toYaml .Values.service.selector | nindent 6 }}
+  template:
+    metadata:
+      labels:
+{{- toYaml .Values.service.selector | nindent 8 }}
+{{- with .Values.podLabels }}
+{{- toYaml . | nindent 8 }}
+{{- end }}
+        azure.workload.identity/use: "true"
+{{- with .Values.podAnnotations }}
+      annotations:
+{{- toYaml . | nindent 8 }}
+{{- end }}
+    spec:
+      serviceAccountName: {{ .Values.serviceAccount.name }}
+{{- with .Values.securityContext }}
+      securityContext:
+{{- toYaml . | nindent 8 }}
+{{- end }}
+      containers:
+        - name: {{ .Values.chartmetadata.name }}
+          image: "{{ .Values.image.repository }}:{{ .Values.image.tag }}"
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          # The MCP server uses StdioServerTransport; without stdin open the container
+          # reads EOF immediately and exits cleanly, causing CrashLoop/Completed loops.
+          stdin: true
+{{- with .Values.containerSecurityContext }}
+          securityContext:
+{{- toYaml . | nindent 12 }}
+{{- end }}
+          env:
+          # From src/config.ts: only TERRAKUBE_API_URL and TERRAKUBE_PAT_TOKEN are read by the server
+          - name: TERRAKUBE_API_URL
+            value: {{ .Values.terrakube.apiUrl | quote }}
+          - name: TERRAKUBE_PAT_TOKEN
+            valueFrom:
+              secretKeyRef:
+                name: {{ .Values.chartmetadata.name }}-secrets
+                key: {{ .Values.secretProvider.secret.key }}
+          ports:
+            - name: http
+              containerPort: {{ .Values.service.port }}
+              protocol: TCP
+          # No startup/liveness/readiness probes: src/index.ts only opens a StdioServerTransport,
+          # there is no HTTP listener (no express/http server is used, no /healthz endpoint exists).
+          # httpGet probes against this container would always fail and crash-loop the pod.
+          # Kubernetes already restarts the container via restartPolicy if the node process exits.
+          resources:
+            limits:
+{{- toYaml .Values.resources.limits | nindent 14 }}
+            requests:
+{{- toYaml .Values.resources.requests | nindent 14 }}
+          volumeMounts:
+          - name: secrets-store-inline
+            mountPath: "/mnt/secrets-store"
+            readOnly: true
+      volumes:
+      - name: secrets-store-inline
+        csi:
+          driver: secrets-store.csi.k8s.io
+          readOnly: true
+          volumeAttributes:
+            secretProviderClass: {{ .Values.chartmetadata.name }}-secrets
+{{- with .Values.nodeSelector }}
+      nodeSelector:
+{{- toYaml . | nindent 8 }}
+{{- end }}
+{{- with .Values.tolerations }}
+      tolerations:
+{{- toYaml . | nindent 8 }}
+{{- end }}
+{{- with .Values.affinity }}
+      affinity:
+{{- toYaml . | nindent 8 }}
+{{- end }}

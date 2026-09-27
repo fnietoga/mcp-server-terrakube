@@ -1,0 +1,27 @@
+{{- if .Values.route.main.enabled }}
+apiVersion: {{ .Values.route.main.apiVersion }}
+kind: {{ .Values.route.main.kind }}
+metadata:
+  name: {{ .Values.chartmetadata.name }}
+  labels:
+    app: {{ .Values.chartmetadata.labels.app }}
+    component: {{ .Values.chartmetadata.labels.component }}
+{{- with .Values.route.main.labels }}
+{{- toYaml . | nindent 4 }}
+{{- end }}
+{{- with .Values.route.main.annotations }}
+  annotations:
+{{- toYaml . | nindent 4 }}
+{{- end }}
+spec:
+  parentRefs:
+{{- toYaml .Values.route.main.parentRefs | nindent 4 }}
+  hostnames:
+{{- toYaml .Values.route.main.hostnames | nindent 4 }}
+  rules:
+  - matches:
+{{- toYaml .Values.route.main.matches | nindent 4 }}
+    backendRefs:
+    - name: {{ .Values.chartmetadata.name }}
+      port: {{ .Values.service.port }}
+{{- end }}

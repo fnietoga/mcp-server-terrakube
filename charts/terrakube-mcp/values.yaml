@@ -1,0 +1,95 @@
+# Default values for terrakube-mcp.
+# This file holds chart-wide, environment-agnostic defaults.
+# Environment-specific values (hostnames, tenant/keyvault names, image tag, etc.)
+# belong in values-<env>.yaml and are layered on top with `-f values.yaml -f values-dev.yaml`.
+
+chartmetadata:
+  name: terrakube-mcp
+  labels:
+    app: terrakube
+    component: mcp
+
+image:
+  repository: "" # required - container registry + repository path, e.g. myregistry.azurecr.io/terrakube/mcp-server-terrakube
+  tag: "latest" # recommended to pin to a specific image tag/digest per environment
+  pullPolicy: IfNotPresent
+
+replicaCount: 1 # HA baseline for production-like dev clusters
+
+autoscaling: # HPA settings for terrakube-mcp
+  enabled: false
+  minReplicas: 1
+  maxReplicas: 3
+  targetCPUUtilizationPercentage: 80
+
+podDisruptionBudget: # PDB enabled for terrakube-mcp availability during node maintenance
+  enabled: false
+  minAvailable: 1
+
+serviceAccount:
+  name: "terrakube-mcp-sa"
+  annotations: {} # e.g. azure.workload.identity/client-id is set automatically from secretProvider.identity.clientID
+  labels: {}
+
+podLabels: {}
+podAnnotations: {}
+
+service:
+  type: ClusterIP
+  port: 8001
+  targetPort: 8001
+  protocol: TCP
+  name: http
+  annotations: {} # e.g. cloud LoadBalancer/service mesh specific annotations
+  labels: {}
+  selector:
+    app: terrakube
+    component: mcp
+
+resources:
+  limits:
+    cpu: 750m
+    memory: 1.5Gi
+  requests:
+    cpu: 250m
+    memory: 256Mi
+
+nodeSelector: {} # optional - e.g. {caas/poolname: <node-pool-label>} to pin pods to a specific node pool
+tolerations: []
+affinity: {}
+
+securityContext: {}
+containerSecurityContext: {}
+
+# -- Gateway API route configuration, mirrors the grafana chart's `route:` block
+# TLS is terminated by the parent Gateway using an externally-provisioned certificate secret
+# (e.g. "tls-secret-terrakube", created by another process) - this chart does not manage it.
+route:
+  main:
+    enabled: true
+    apiVersion: gateway.networking.k8s.io/v1
+    kind: HTTPRoute
+    annotations: {}
+    labels: {}
+    hostnames: [] # required - internal/external hostname(s) this MCP server is exposed on, e.g. terrakube-mcp.example.int
+    parentRefs:
+      - name: "" # required - name of the Gateway API Gateway this route attaches to
+        namespace: "" # required - namespace of that Gateway
+    matches:
+      - path:
+          type: PathPrefix
+          value: /
+
+# Azure Key Vault backed TLS secret, mounted via the Secrets Store CSI driver
+secretProvider:
+  identity:
+    clientID: "" # required - workload identity clientId with access to the Key Vault below
+    keyvaultName: "" # required - Azure Key Vault name holding the TLS cert and the Terrakube PAT
+    tenantId: "" # required - Azure AD tenant id
+  secret:
+    objectName: "terrakube-pat-token" # required - name of the secret object in Azure Key Vault
+    key: "terrakube-pat-token" # key inside the synced Kubernetes Secret and consumed by TERRAKUBE_PAT_TOKEN
+
+# Terrakube API connection - only these two vars are read by src/config.ts
+terrakube:
+  apiUrl: "" # required - base URL of the Terrakube API this MCP server talks to

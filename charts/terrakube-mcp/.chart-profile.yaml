@@ -1,0 +1,21 @@
+# Default values
+releaseName: terrakube-mcp
+namespace: terrakube
+
+# Extra `helm template` flags, applied on top of values.yaml / values-<env>.yaml
+valuesFiles:
+  - values-dev.yaml       # extra -f files, relative to the chart directory
+setValues: []
+apiVersions: []
+kubeVersion: "1.32.2"         # --kube-version, kept as the AKS cluster's version even though no template checks .Capabilities
+
+# Environment overrides
+environments:
+  dev:
+    releaseName: terrakube-mcp
+    namespace: terrakube
+    setValues:
+      - "replicaCount=1"
+  prod:
+    releaseName: terrakube-mcp
+    namespace: terrakube
